@@ -9,7 +9,6 @@ import (
 	"os"
 	"testing"
 	"time"
-	server "weather-server"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -105,32 +104,6 @@ func TestServerWeatherReport(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := string(data)
-
-	if !cmp.Equal(want, got) {
-		t.Error(cmp.Diff(want, got))
-	}
-
-}
-
-func TestUnmarshallJson(t *testing.T) {
-	t.Parallel()
-	//open the file
-	f, err := os.Open("testdata/weather_test.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-	got, err := server.ParseResponse(f)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	want := server.Weather{
-		Main:        "Clouds",
-		Description: "broken clouds",
-		Temp:        74.12,
-		City:        "Kaneohe",
-	}
 
 	if !cmp.Equal(want, got) {
 		t.Error(cmp.Diff(want, got))
