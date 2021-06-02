@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -67,7 +68,13 @@ func TestServerWeatherReport(t *testing.T) {
 	//setup http server for get requests
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		fmt.Fprintf(w, "hello\n")
+		f, err := os.Open("testdata/weather_test.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		w.WriteHeader(http.StatusOK)
+		io.Copy(w, f)
 
 	}))
 	defer ts.Close()

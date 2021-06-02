@@ -32,15 +32,15 @@ func Hello(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "hello\n")
 }
 
-func WeatherReport(w http.ResponseWriter, req *http.Request) http.ResponseWriter {
+func WeatherReport(w http.ResponseWriter, req *http.Request) {
 	f, err := os.Open("testdata/weather_test.json")
 	if err != nil {
-		fmt.Errorf("Unable to complete request.  Please try again later %v", err)
+		fmt.Println(err)
 	}
-	f.Close()
+	defer f.Close()
 	w.WriteHeader(http.StatusOK)
 	io.Copy(w, f)
-	return w
+
 }
 
 // ParseReponse takes an io.Reader and decodes into WeatherReponse struct
