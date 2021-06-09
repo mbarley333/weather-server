@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -10,6 +11,11 @@ import (
 
 	"github.com/gorilla/mux"
 )
+
+type Page struct {
+	Title string
+	Body  []byte
+}
 
 func Hello(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "hello\n")
@@ -41,4 +47,9 @@ func StartServer() {
 
 	log.Fatal(srv.ListenAndServeTLS(os.Getenv("CERTPATH"), os.Getenv("KEYPATH")))
 
+}
+
+func (p *Page) Save() error {
+	filename := p.Title + ".txt"
+	return ioutil.WriteFile(filename, p.Body, 0600)
 }

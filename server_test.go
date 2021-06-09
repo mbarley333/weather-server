@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
+	server "weather-server"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -132,3 +134,38 @@ func TestGetEnvironmentVariables(t *testing.T) {
 	}
 
 }
+
+func TestPageSave(t *testing.T) {
+	tmpdir := t.TempDir()
+	filepath := tmpdir + "/save"
+	file := tmpdir + "/save.txt"
+	fmt.Println(filepath)
+	testpage := server.Page{
+		Title: filepath,
+	}
+
+	err := testpage.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, fileerr := os.Open(file) // For read access.
+	if fileerr != nil {
+		log.Fatal(fileerr)
+	}
+
+}
+
+// func TestPageLoad(t *testing.T) {
+// 	tmpdir := t.TempDir()
+// 	filepath := tmpdir + "/load"
+
+// 	testpage := server.Page{
+// 		Title: filepath,
+// 	}
+// 	err := testpage.Save()
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+
+// }
