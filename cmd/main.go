@@ -1,17 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
 	server "weather-server"
-
-	"github.com/gorilla/mux"
 )
 
 func main() {
-	r := mux.NewRouter()
-	r.HandleFunc("/hello", server.Hello)
-	r.HandleFunc("/weatherreport", server.WeatherReport)
-	fmt.Println("Starting up on :9000")
-	http.ListenAndServe(":9000", r)
+	server.StartServer()
 }

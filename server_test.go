@@ -110,3 +110,25 @@ func TestServerWeatherReport(t *testing.T) {
 	}
 
 }
+
+func TestGetEnvironmentVariables(t *testing.T) {
+	var got bool
+
+	want := true
+	if os.Getenv("CERTPATH") != "" {
+		got = true
+	}
+
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+
+	if os.Getenv("KEYPATH") != "" {
+		got = true
+	}
+
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+
+}
