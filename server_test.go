@@ -155,17 +155,28 @@ func TestPageSave(t *testing.T) {
 	}
 
 }
+func TestPageLoad(t *testing.T) {
+	tmpdir := t.TempDir()
+	filepath := tmpdir + "/load"
 
-// func TestPageLoad(t *testing.T) {
-// 	tmpdir := t.TempDir()
-// 	filepath := tmpdir + "/load"
+	fmt.Println(filepath)
+	want := server.Page{
+		Title: filepath,
+		Body:  []byte("This is a sample Page."),
+	}
 
-// 	testpage := server.Page{
-// 		Title: filepath,
-// 	}
-// 	err := testpage.Save()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	err := want.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// }
+	got, err := server.LoadPage(want.Title)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !cmp.Equal(&want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+
+}
