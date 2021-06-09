@@ -9,9 +9,6 @@ To learn and become more familiar with the following aspects of the Go language:
 * functions and methods
 * structs
 * HTTP Server
-* context
-* channels
-* concurrency
 * writing clear code
 
 
