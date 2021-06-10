@@ -232,6 +232,8 @@ func TestViewHandler(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := string(data)
+	// got := string("zzz")
+	// fmt.Println(data)
 
 	if !cmp.Equal(want, got) {
 		t.Error(cmp.Diff(want, got))
