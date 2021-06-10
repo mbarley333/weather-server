@@ -11,3 +11,10 @@
 
 # certs
 *.pem
+
+
+#text
+*.txt
+
+#vscode
+.vscode/launch.json
