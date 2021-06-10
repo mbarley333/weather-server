@@ -62,3 +62,12 @@ func LoadPage(title string) (*Page, error) {
 	}
 	return &Page{Title: title, Body: body}, err
 }
+
+func ViewHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/view/"):]
+	p, err := LoadPage(title)
+	if err != nil {
+		fmt.Errorf("unable to load page: %s", err)
+	}
+	fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", p.Title, p.Body)
+}
