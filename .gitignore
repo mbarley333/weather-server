@@ -17,4 +17,4 @@
 *.txt
 
 #vscode
-.vscode/launch.json
+.vscode/
