@@ -1,15 +1,12 @@
 package server_test
 
 import (
-	"fmt"
-	"io"
+	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 	server "weather-server"
 
 	"github.com/google/go-cmp/cmp"
@@ -21,86 +18,58 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
-func TestServerHello(t *testing.T) {
-	t.Parallel()
-	//setup http server for get requests
-	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		fmt.Fprintf(w, "hello\n")
-
-	}))
-	defer ts.Close()
-
-	//create new client based on struct
-	var client Client
-
-	//change default timeout value
-	client.HTTPClient = &http.Client{Timeout: 10 * time.Second}
-	//set base url to test server url
-	client.Base = ts.URL
-	//set route to test
-	client.Route = "/hello"
-
-	url := client.Base + client.Route
-
-	//set HTTPClient to test client to handle x509 certs w/o more setup work
-	client.HTTPClient = ts.Client()
-
-	want := "hello\n"
-	resp, err := client.HTTPClient.Get(url)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := string(data)
-
-	if !cmp.Equal(want, got) {
-		t.Error(cmp.Diff(want, got))
-	}
-
+var wh = server.WeathersHandlers{
+	Store: map[string]server.Weather{
+		"id1": {
+			Id:          "id1",
+			Main:        "Cloudy",
+			Description: "Partly cloudy",
+			Temp:        74.6,
+			City:        "Kaneohe",
+		},
+		"id2": {
+			Id:          "id2",
+			Main:        "Rain",
+			Description: "Passing showers",
+			Temp:        64.6,
+			City:        "Seattle",
+		},
+	},
 }
 
-func TestServerWeatherReport(t *testing.T) {
+func TestServerGet(t *testing.T) {
 	t.Parallel()
+
+	sliceWeather := make([]server.Weather, len(wh.Store))
+
+	i := 0
+	for _, weather := range wh.Store {
+		sliceWeather[i] = weather
+		i++
+	}
+
+	want := string(`[{"id":"id1","main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe"},{"id":"id2","main":"Rain","description":"Passing showers","temp":64.6,"city":"Seattle"}]`)
+
+	//marshal json for Write
+	jsonBytes, err := json.Marshal(sliceWeather)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	//setup http server for get requests
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		f, err := os.Open("testdata/weather_test.json")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer f.Close()
 		w.WriteHeader(http.StatusOK)
-		io.Copy(w, f)
+		w.Write(jsonBytes)
 
 	}))
-	defer ts.Close()
 
-	//create new client based on struct
-	var client Client
-
-	//change default timeout value
-	client.HTTPClient = &http.Client{Timeout: 10 * time.Second}
-	//set base url to test server url
-	client.Base = ts.URL
-	//set route to test
-	client.Route = "/weatherreport"
-
-	url := client.Base + client.Route
-
-	//set HTTPClient to test client to handle x509 certs w/o more setup work
-	client.HTTPClient = ts.Client()
-
-	want := "hello\n"
-	resp, err := client.HTTPClient.Get(url)
+	resp, err := ts.Client().Get(ts.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
+
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
@@ -135,108 +104,51 @@ func TestGetEnvironmentVariables(t *testing.T) {
 
 }
 
-func TestPageSave(t *testing.T) {
-	tmpdir := t.TempDir()
-	filepath := tmpdir + "/save"
-	file := tmpdir + "/save.txt"
-	fmt.Println(filepath)
-	testpage := server.Page{
-		Title: filepath,
-	}
+// func TestServerWeatherReport(t *testing.T) {
+// 	t.Parallel()
+// 	//setup http server for get requests
+// 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-	err := testpage.Save()
-	if err != nil {
-		t.Fatal(err)
-	}
+// 		f, err := os.Open("testdata/weather_test.json")
+// 		if err != nil {
+// 			t.Fatal(err)
+// 		}
+// 		defer f.Close()
+// 		w.WriteHeader(http.StatusOK)
+// 		io.Copy(w, f)
 
-	_, fileerr := os.Open(file) // For read access.
-	if fileerr != nil {
-		log.Fatal(fileerr)
-	}
+// 	}))
+// 	defer ts.Close()
 
-}
-func TestPageLoad(t *testing.T) {
-	tmpdir := t.TempDir()
-	filepath := tmpdir + "/load"
+// 	//create new client based on struct
+// 	var client Client
 
-	fmt.Println(filepath)
-	want := server.Page{
-		Title: filepath,
-		Body:  []byte("This is a sample Page."),
-	}
+// 	//change default timeout value
+// 	client.HTTPClient = &http.Client{Timeout: 10 * time.Second}
+// 	//set base url to test server url
+// 	client.Base = ts.URL
+// 	//set route to test
+// 	client.Route = "/weatherreport"
 
-	err := want.Save()
-	if err != nil {
-		t.Fatal(err)
-	}
+// 	url := client.Base + client.Route
 
-	got, err := server.LoadPage(want.Title)
-	if err != nil {
-		t.Fatal(err)
-	}
+// 	//set HTTPClient to test client to handle x509 certs w/o more setup work
+// 	client.HTTPClient = ts.Client()
 
-	if !cmp.Equal(&want, got) {
-		t.Error(cmp.Diff(want, got))
-	}
+// 	want := "hello\n"
+// 	resp, err := client.HTTPClient.Get(url)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	defer resp.Body.Close()
+// 	data, err := ioutil.ReadAll(resp.Body)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	got := string(data)
 
-}
+// 	if !cmp.Equal(want, got) {
+// 		t.Error(cmp.Diff(want, got))
+// 	}
 
-func TestViewHandler(t *testing.T) {
-	t.Parallel()
-	tmpdir := t.TempDir()
-	filepath := tmpdir + "/view"
-	testpage := server.Page{
-		Title: filepath,
-		Body:  []byte("This is a sample Page."),
-	}
-	err := testpage.Save()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	p, err := server.LoadPage(testpage.Title)
-	if err != nil {
-		t.Fatal(err)
-	}
-	//setup http server for get requests
-	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", p.Title, p.Body)
-
-	}))
-	defer ts.Close()
-
-	//create new client based on struct
-	var client Client
-
-	//change default timeout value
-	client.HTTPClient = &http.Client{Timeout: 10 * time.Second}
-	//set base url to test server url
-	client.Base = ts.URL
-	//set route to test
-	client.Route = "/view/"
-
-	url := client.Base + client.Route
-
-	//set HTTPClient to test client to handle x509 certs w/o more setup work
-	client.HTTPClient = ts.Client()
-
-	want := fmt.Sprintf("<h1>%s</h1><div>%s</div>", p.Title, p.Body) //"hello\n"
-	resp, err := client.HTTPClient.Get(url)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := string(data)
-	// got := string("zzz")
-	// fmt.Println(data)
-
-	if !cmp.Equal(want, got) {
-		t.Error(cmp.Diff(want, got))
-	}
-
-}
+// }

@@ -2,10 +2,10 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -15,13 +15,37 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type Page struct {
-	Title string
-	Body  []byte
+//struct for json
+type Weather struct {
+	Id          string  `json:"id"`
+	Main        string  `json:"main"`
+	Description string  `json:"description"`
+	Temp        float64 `json:"temp"`
+	City        string  `json:"city"`
 }
 
-func Hello(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "hello\n")
+type WeathersHandlers struct {
+	Store map[string]Weather
+}
+
+func (h *WeathersHandlers) Get(w http.ResponseWriter, r *http.Request) {
+	sliceWeather := make([]Weather, len(h.Store))
+
+	i := 0
+	for _, weather := range h.Store {
+		sliceWeather[i] = weather
+		i++
+	}
+
+	//marshal json for Write
+	jsonBytes, err := json.Marshal(sliceWeather)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonBytes)
 }
 
 func WeatherReport(w http.ResponseWriter, req *http.Request) {
@@ -37,27 +61,16 @@ func WeatherReport(w http.ResponseWriter, req *http.Request) {
 
 func StartServer() {
 
-	testpage := &Page{
-		Title: "goforit",
-		Body:  []byte("I'm learning Go."),
-	}
-
-	testpage.Save()
-	var dir string
 	var wait time.Duration
+	var h = WeathersHandlers{}
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
-	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
 	flag.Parse()
 
 	r := mux.NewRouter()
 
-	// This will serve files under http://localhost:8000/static/<filename>
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(dir))))
-	r.HandleFunc("/hello", Hello)
 	r.HandleFunc("/weatherreport", WeatherReport)
-	//not working
-	r.HandleFunc("/view/", viewHandler)
+	r.HandleFunc("/weathers", h.Get)
 
 	srv := &http.Server{
 		Addr:              "127.0.0.1:9000",
@@ -92,42 +105,4 @@ func StartServer() {
 	log.Println("shutting down")
 	os.Exit(0)
 
-}
-
-func (p *Page) Save() error {
-	filename := p.Title + ".txt"
-	return ioutil.WriteFile(filename, p.Body, 0644)
-}
-
-// func LoadPage(title string) (*Page, error) {
-// 	filename := title + ".txt"
-// 	body, err := ioutil.ReadFile(filename)
-// 	if err != nil {
-// 		return &Page{}, fmt.Errorf("unable to load page: %s", err)
-// 	}
-// 	return &Page{Title: title, Body: body}, nil
-// }
-
-// func ViewHandler(w http.ResponseWriter, r *http.Request) {
-// 	title := r.URL.Path[len("/view/"):]
-// 	p, err := LoadPage(title)
-// 	if err != nil {
-// 		fmt.Errorf("unable to load page: %s", err)
-// 	}
-// 	fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", p.Title, p.Body)
-// }
-
-func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
-	body, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	return &Page{Title: title, Body: body}, nil
-}
-
-func viewHandler(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/view/"):]
-	p, _ := loadPage(title)
-	fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", p.Title, p.Body)
 }
