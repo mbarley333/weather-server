@@ -68,6 +68,28 @@ func (h *WeatherHandlers) Get(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
+func (h *WeatherHandlers) GetByCity(w http.ResponseWriter, r *http.Request) {
+	sliceWeather := make([]Weather, len(h.Store))
+	h.Lock()
+	i := 0
+	for _, weather := range h.Store {
+		sliceWeather[i] = weather
+		i++
+	}
+	h.Unlock()
+
+	//marshal json for Write
+	jsonBytes, err := json.Marshal(sliceWeather)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonBytes)
+}
+
 func (h *WeatherHandlers) Post(w http.ResponseWriter, r *http.Request) {
 
 	var result Weather
@@ -75,6 +97,7 @@ func (h *WeatherHandlers) Post(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
+		return
 	}
 	defer r.Body.Close()
 
