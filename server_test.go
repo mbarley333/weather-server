@@ -1,8 +1,7 @@
 package server_test
 
 import (
-	"encoding/json"
-	"io/ioutil"
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,7 +17,7 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
-var wh = server.WeathersHandlers{
+var wh = server.WeatherHandlers{
 	Store: map[string]server.Weather{
 		"id1": {
 			Id:          "id1",
@@ -39,47 +38,55 @@ var wh = server.WeathersHandlers{
 
 func TestServerGet(t *testing.T) {
 	t.Parallel()
+	r, _ := http.NewRequest("GET", "/weather", nil)
+	w := httptest.NewRecorder()
 
-	sliceWeather := make([]server.Weather, len(wh.Store))
+	wh.Get(w, r)
 
-	i := 0
-	for _, weather := range wh.Store {
-		sliceWeather[i] = weather
-		i++
-	}
-
-	want := string(`[{"id":"id1","main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe"},{"id":"id2","main":"Rain","description":"Passing showers","temp":64.6,"city":"Seattle"}]`)
-
-	//marshal json for Write
-	jsonBytes, err := json.Marshal(sliceWeather)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	//setup http server for get requests
-	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		w.WriteHeader(http.StatusOK)
-		w.Write(jsonBytes)
-
-	}))
-
-	resp, err := ts.Client().Get(ts.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := string(data)
+	want := http.StatusOK
+	got := w.Code
 
 	if !cmp.Equal(want, got) {
 		t.Error(cmp.Diff(want, got))
 	}
 
+	wantBody := []byte(`[{"id":"id1","main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe"},{"id":"id2","main":"Rain","description":"Passing showers","temp":64.6,"city":"Seattle"}]`)
+	gotBody := w.Body.Bytes()
+
+	if !cmp.Equal(wantBody, gotBody) {
+		t.Error(cmp.Diff(wantBody, gotBody))
+	}
+
+}
+
+func TestServerPost(t *testing.T) {
+	t.Parallel()
+
+	var jsonStr = []byte(`{"id":"id3","main":"Cloudy","description":"Partly cloudy","temp":84.6,"city":"Honolulu"}`)
+
+	r, _ := http.NewRequest("POST", "/weather", bytes.NewBuffer(jsonStr))
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	wh.Post(w, r)
+
+	want := http.StatusOK
+	got := w.Code
+
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+
+	// r2, _ := http.NewRequest("POST", "/weather", nil)
+	// r2.Header.Set("Content-Type", "application/json")
+	// w2 := httptest.NewRecorder()
+
+	// wantBody := []byte(`[{"id":"id1","main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe"},{"id":"id2","main":"Rain","description":"Passing showers","temp":64.6,"city":"Seattle"},{"id":"id3","main":"Cloudy","description":"Partly cloudy","temp":84.6,"city":"Honolulu"}]`)
+	// gotBody := w2.Body.Bytes()
+
+	// if !cmp.Equal(wantBody, gotBody) {
+	// 	t.Error(cmp.Diff(wantBody, gotBody))
+	// }
 }
 
 func TestGetEnvironmentVariables(t *testing.T) {
@@ -103,52 +110,3 @@ func TestGetEnvironmentVariables(t *testing.T) {
 	}
 
 }
-
-// func TestServerWeatherReport(t *testing.T) {
-// 	t.Parallel()
-// 	//setup http server for get requests
-// 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-// 		f, err := os.Open("testdata/weather_test.json")
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-// 		defer f.Close()
-// 		w.WriteHeader(http.StatusOK)
-// 		io.Copy(w, f)
-
-// 	}))
-// 	defer ts.Close()
-
-// 	//create new client based on struct
-// 	var client Client
-
-// 	//change default timeout value
-// 	client.HTTPClient = &http.Client{Timeout: 10 * time.Second}
-// 	//set base url to test server url
-// 	client.Base = ts.URL
-// 	//set route to test
-// 	client.Route = "/weatherreport"
-
-// 	url := client.Base + client.Route
-
-// 	//set HTTPClient to test client to handle x509 certs w/o more setup work
-// 	client.HTTPClient = ts.Client()
-
-// 	want := "hello\n"
-// 	resp, err := client.HTTPClient.Get(url)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer resp.Body.Close()
-// 	data, err := ioutil.ReadAll(resp.Body)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	got := string(data)
-
-// 	if !cmp.Equal(want, got) {
-// 		t.Error(cmp.Diff(want, got))
-// 	}
-
-// }

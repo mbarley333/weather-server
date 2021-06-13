@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -24,53 +24,94 @@ type Weather struct {
 	City        string  `json:"city"`
 }
 
-type WeathersHandlers struct {
+type WeatherHandlers struct {
+	sync.Mutex
 	Store map[string]Weather
 }
 
-func (h *WeathersHandlers) Get(w http.ResponseWriter, r *http.Request) {
-	sliceWeather := make([]Weather, len(h.Store))
+func (h *WeatherHandlers) weather(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		h.Get(w, r)
+		return
+	case "POST":
+		h.Post(w, r)
+		return
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte("method not allowed"))
+		return
 
+	}
+
+}
+
+func (h *WeatherHandlers) Get(w http.ResponseWriter, r *http.Request) {
+	sliceWeather := make([]Weather, len(h.Store))
+	h.Lock()
 	i := 0
 	for _, weather := range h.Store {
 		sliceWeather[i] = weather
 		i++
 	}
+	h.Unlock()
 
 	//marshal json for Write
 	jsonBytes, err := json.Marshal(sliceWeather)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonBytes)
 }
 
-func WeatherReport(w http.ResponseWriter, req *http.Request) {
-	f, err := os.Open("testdata/weather_test.json")
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer f.Close()
-	w.WriteHeader(http.StatusOK)
-	io.Copy(w, f)
+func (h *WeatherHandlers) Post(w http.ResponseWriter, r *http.Request) {
 
+	var result Weather
+	err := json.NewDecoder(r.Body).Decode(&result)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
+	defer r.Body.Close()
+
+	h.Lock()
+	h.Store[result.Id] = result
+	defer h.Unlock()
 }
 
 func StartServer() {
 
 	var wait time.Duration
-	var h = WeathersHandlers{}
+	var h = WeatherHandlers{
+		Store: map[string]Weather{
+			"id1": {
+				Id:          "id1",
+				Main:        "Cloudy",
+				Description: "Partly cloudy",
+				Temp:        74.6,
+				City:        "Kaneohe",
+			},
+			"id2": {
+				Id:          "id2",
+				Main:        "Rain",
+				Description: "Passing showers",
+				Temp:        64.6,
+				City:        "Seattle",
+			},
+		},
+	}
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 	flag.Parse()
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/weatherreport", WeatherReport)
-	r.HandleFunc("/weathers", h.Get)
+	//r.HandleFunc("/weatherreport", WeatherReport)
+	r.HandleFunc("/weather", h.weather)
 
 	srv := &http.Server{
 		Addr:              "127.0.0.1:9000",
