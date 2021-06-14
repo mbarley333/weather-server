@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,7 +33,7 @@ type WeatherHandlers struct {
 func (h *WeatherHandlers) weather(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		h.Get(w, r)
+		h.GetByCity(w, r)
 		return
 	case "POST":
 		h.Post(w, r)
@@ -69,12 +70,18 @@ func (h *WeatherHandlers) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WeatherHandlers) GetByCity(w http.ResponseWriter, r *http.Request) {
-	sliceWeather := make([]Weather, len(h.Store))
+	query := r.URL.Query()
+	filters := strings.ToLower(query.Get("city"))
+
+	var sliceWeather []Weather
+
 	h.Lock()
-	i := 0
+
 	for _, weather := range h.Store {
-		sliceWeather[i] = weather
-		i++
+		//sliceWeather[i] = weather
+		if strings.ToLower(weather.City) == filters {
+			sliceWeather = append(sliceWeather, weather)
+		}
 	}
 	h.Unlock()
 

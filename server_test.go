@@ -39,8 +39,28 @@ var wh = server.WeatherHandlers{
 	},
 }
 
-//TODO refactor to allow url paramters with get
-//api.openweathermap.org/data/2.5/weather?q={city name}
+func TestServerGetByCity(t *testing.T) {
+	t.Parallel()
+	r, _ := http.NewRequest("GET", "/weather?city=kaneohe", nil)
+	w := httptest.NewRecorder()
+
+	wh.GetByCity(w, r)
+
+	want := http.StatusOK
+	got := w.Code
+
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+
+	wantBody := []byte(`[{"id":"id1","main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe"}]`)
+	gotBody := w.Body.Bytes()
+
+	if !cmp.Equal(wantBody, gotBody) {
+		t.Error(cmp.Diff(wantBody, gotBody))
+	}
+
+}
 
 func TestServerGet(t *testing.T) {
 	t.Parallel()
@@ -115,29 +135,6 @@ func TestGetEnvironmentVariables(t *testing.T) {
 
 	if !cmp.Equal(want, got) {
 		t.Error(cmp.Diff(want, got))
-	}
-
-}
-
-func TestServerGetByCity(t *testing.T) {
-	t.Parallel()
-	r, _ := http.NewRequest("GET", "/weather/", nil)
-	w := httptest.NewRecorder()
-
-	wh.GetByCity(w, r)
-
-	want := http.StatusOK
-	got := w.Code
-
-	if !cmp.Equal(want, got) {
-		t.Error(cmp.Diff(want, got))
-	}
-
-	wantBody := []byte(`[{"id":"id1","main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe"}]`)
-	gotBody := w.Body.Bytes()
-
-	if !cmp.Equal(wantBody, gotBody) {
-		t.Error(cmp.Diff(wantBody, gotBody))
 	}
 
 }
