@@ -18,7 +18,7 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
-// curl https://localhost:9000/weather
+// curl https://localhost:9000/weather?city=kaneohe
 // curl https://localhost:9000/weather -X POST -d '{"id":"id3","main":"Sunny","description":"Clear","temp":74.6,"city":"Kyoto"}'
 
 var wh = server.WeatherHandlers{
@@ -50,6 +50,10 @@ func TestServerGetByCity(t *testing.T) {
 	tcs := []testCase{
 		{
 			url:  "/weather?city=kaneohe",
+			want: []byte(`[{"id":"id1","main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe"}]`),
+		},
+		{
+			url:  "/weather?city=KAneOHE",
 			want: []byte(`[{"id":"id1","main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe"}]`),
 		},
 		{
