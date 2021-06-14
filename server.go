@@ -47,15 +47,25 @@ func (h *WeatherHandlers) weather(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h *WeatherHandlers) Get(w http.ResponseWriter, r *http.Request) {
-	sliceWeather := make([]Weather, len(h.Store))
+func (h *WeatherHandlers) GetByCity(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	filters := strings.ToLower(query.Get("city"))
+
+	var sliceWeather []Weather
+
 	h.Lock()
-	i := 0
+
 	for _, weather := range h.Store {
-		sliceWeather[i] = weather
-		i++
+		if strings.ToLower(weather.City) == filters {
+			sliceWeather = append(sliceWeather, weather)
+		}
 	}
 	h.Unlock()
+
+	if len(sliceWeather) == 0 {
+		w.Write([]byte("unable to locate city"))
+		return
+	}
 
 	//marshal json for Write
 	jsonBytes, err := json.Marshal(sliceWeather)
@@ -69,19 +79,13 @@ func (h *WeatherHandlers) Get(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
-func (h *WeatherHandlers) GetByCity(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	filters := strings.ToLower(query.Get("city"))
-
-	var sliceWeather []Weather
-
+func (h *WeatherHandlers) Get(w http.ResponseWriter, r *http.Request) {
+	sliceWeather := make([]Weather, len(h.Store))
 	h.Lock()
-
+	i := 0
 	for _, weather := range h.Store {
-		//sliceWeather[i] = weather
-		if strings.ToLower(weather.City) == filters {
-			sliceWeather = append(sliceWeather, weather)
-		}
+		sliceWeather[i] = weather
+		i++
 	}
 	h.Unlock()
 

@@ -41,23 +41,42 @@ var wh = server.WeatherHandlers{
 
 func TestServerGetByCity(t *testing.T) {
 	t.Parallel()
-	r, _ := http.NewRequest("GET", "/weather?city=kaneohe", nil)
-	w := httptest.NewRecorder()
 
-	wh.GetByCity(w, r)
-
-	want := http.StatusOK
-	got := w.Code
-
-	if !cmp.Equal(want, got) {
-		t.Error(cmp.Diff(want, got))
+	type testCase struct {
+		url  string
+		want []byte
 	}
+	tcs := []testCase{
+		{
+			url:  "/weather?city=kaneohe",
+			want: []byte(`[{"id":"id1","main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe"}]`),
+		},
+		{
+			url:  "/weather?city=zzz",
+			want: []byte("unable to locate city"),
+		},
+	}
+	for _, tc := range tcs {
 
-	wantBody := []byte(`[{"id":"id1","main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe"}]`)
-	gotBody := w.Body.Bytes()
+		r, _ := http.NewRequest("GET", tc.url, nil)
+		w := httptest.NewRecorder()
 
-	if !cmp.Equal(wantBody, gotBody) {
-		t.Error(cmp.Diff(wantBody, gotBody))
+		wh.GetByCity(w, r)
+
+		want := http.StatusOK
+		got := w.Code
+
+		if !cmp.Equal(want, got) {
+			t.Error(cmp.Diff(want, got))
+		}
+
+		wantBody := tc.want
+		gotBody := w.Body.Bytes()
+
+		if !cmp.Equal(wantBody, gotBody) {
+			t.Error(cmp.Diff(wantBody, gotBody))
+		}
+
 	}
 
 }
