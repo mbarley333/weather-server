@@ -1,6 +1,6 @@
 # Weather Server
 
-A Go based HTTP server that returns a JSON reponse similar to the Open Weather Map Current Weather API
+A Go based HTTP server that accepts GET and POST requests.  Returns weather data in JSON format.
 
 
 ## Goals
