@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -25,6 +26,7 @@ type Weather struct {
 	City        string  `json:"city"`
 }
 
+//is this like a cache if there is a persistent data store elsewhere?
 type WeatherHandlers struct {
 	sync.Mutex
 	Store map[string]Weather
@@ -113,24 +115,34 @@ func (h *WeatherHandlers) Post(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	h.Lock()
-	h.Store[result.Id] = result
+	h.Store[NewId()] = result
 	defer h.Unlock()
+}
+
+func NewId() string {
+	id := uuid.New().String()
+	return id
 }
 
 func StartServer() {
 
 	var wait time.Duration
+
+	// sample data load start
+	id1 := NewId()
+	id2 := NewId()
+
 	var h = WeatherHandlers{
 		Store: map[string]Weather{
-			"id1": {
-				Id:          "id1",
+			id1: {
+				Id:          id1,
 				Main:        "Cloudy",
 				Description: "Partly cloudy",
 				Temp:        74.6,
 				City:        "Kaneohe",
 			},
-			"id2": {
-				Id:          "id2",
+			id2: {
+				Id:          id2,
 				Main:        "Rain",
 				Description: "Passing showers",
 				Temp:        64.6,

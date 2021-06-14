@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sort"
 	"testing"
 	server "weather-server"
 
@@ -156,4 +157,29 @@ func TestGetEnvironmentVariables(t *testing.T) {
 		t.Error(cmp.Diff(want, got))
 	}
 
+}
+
+func TestNewId(t *testing.T) {
+	t.Parallel()
+
+	want := true
+
+	sliceid := make([]string, 0, 10)
+
+	for i := 0; i < 10; i++ {
+		sliceid = append(sliceid, server.NewId())
+	}
+
+	sort.Strings(sliceid)
+
+	got := true
+	for j := 1; j < 10; j++ {
+		if sliceid[j] == sliceid[j-1] {
+			got = false
+		}
+	}
+
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
 }
