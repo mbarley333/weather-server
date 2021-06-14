@@ -176,10 +176,10 @@ func StartServer() {
 		}
 	}()
 
-	//create channel the understand the os.Signal comands
+	//create channel for os.Signal comands
 	c := make(chan os.Signal, 1)
 
-	//accept CTRL+c for granceful shutdown, unblock condition
+	//accept CTRL+C for granceful shutdown, unblock condition
 	signal.Notify(c, os.Interrupt)
 
 	//everything below the <-c is the activity once channel unblocks
