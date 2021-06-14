@@ -26,7 +26,8 @@ type Weather struct {
 	City        string  `json:"city"`
 }
 
-//is this like a cache if there is a persistent data store elsewhere?
+// is this like a cache if there is a persistent data store elsewhere?
+// if there is a "miss" can we use the owm api to pull data into the "cache"
 type WeatherHandlers struct {
 	sync.Mutex
 	Store map[string]Weather
