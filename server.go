@@ -1,196 +1,90 @@
-package server
+package weather
 
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"strings"
-	"sync"
 	"time"
-
-	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 )
 
-//struct for json
+// struct for json
 type Weather struct {
-	Id          string  `json:"id"`
 	Main        string  `json:"main"`
 	Description string  `json:"description"`
 	Temp        float64 `json:"temp"`
 	City        string  `json:"city"`
 }
 
-// is this like a cache if there is a persistent data store elsewhere?
-// if there is a "miss" can we use the owm api to pull data into the "cache"
-type WeatherHandlers struct {
-	sync.Mutex
-	Store map[string]Weather
-}
-
-func (h *WeatherHandlers) weather(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		h.GetByCity(w, r)
-		return
-	case "POST":
-		h.Post(w, r)
-		return
-	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte("method not allowed"))
-		return
-
-	}
-
-}
-
-func (h *WeatherHandlers) GetByCity(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	filters := strings.ToLower(query.Get("city"))
-
-	var sliceWeather []Weather
-
-	h.Lock()
-
-	for _, weather := range h.Store {
-		if strings.ToLower(weather.City) == filters {
-			sliceWeather = append(sliceWeather, weather)
-		}
-	}
-	h.Unlock()
-
-	if len(sliceWeather) == 0 {
-		w.Write([]byte("unable to locate city"))
-		return
-	}
-
-	//marshal json for Write
-	jsonBytes, err := json.Marshal(sliceWeather)
+func (s *server) handleWeather(w http.ResponseWriter, r *http.Request) {
+	city := r.URL.Query().Get("city")
+	// get actual weather
+	conditions, err := s.GetWeather(city)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		msg := fmt.Sprintf("unable to locate city %q", city)
+		http.Error(w, msg, http.StatusNotFound)
 		return
 	}
-
+	// marshal json for Write
+	jsonBytes, err := json.Marshal(conditions)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonBytes)
 }
 
-func (h *WeatherHandlers) Get(w http.ResponseWriter, r *http.Request) {
-	sliceWeather := make([]Weather, len(h.Store))
-	h.Lock()
-	i := 0
-	for _, weather := range h.Store {
-		sliceWeather[i] = weather
-		i++
-	}
-	h.Unlock()
-
-	//marshal json for Write
-	jsonBytes, err := json.Marshal(sliceWeather)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+type server struct {
+	httpServer *http.Server
+	Addr       string
+	GetWeather func(string) (Weather, error)
 }
 
-func (h *WeatherHandlers) Post(w http.ResponseWriter, r *http.Request) {
-
-	var result Weather
-	err := json.NewDecoder(r.Body).Decode(&result)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	defer r.Body.Close()
-
-	h.Lock()
-	h.Store[NewId()] = result
-	defer h.Unlock()
-}
-
-func NewId() string {
-	id := uuid.New().String()
-	return id
-}
-
-func StartServer() {
-
-	var wait time.Duration
-
-	// sample data load start
-	id1 := NewId()
-	id2 := NewId()
-
-	var h = WeatherHandlers{
-		Store: map[string]Weather{
-			id1: {
-				Id:          id1,
-				Main:        "Cloudy",
-				Description: "Partly cloudy",
-				Temp:        74.6,
-				City:        "Kaneohe",
-			},
-			id2: {
-				Id:          id2,
-				Main:        "Rain",
-				Description: "Passing showers",
-				Temp:        64.6,
-				City:        "Seattle",
-			},
-		},
-	}
-
-	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
-	flag.Parse()
-
-	r := mux.NewRouter()
-
-	//r.HandleFunc("/weatherreport", WeatherReport)
-	r.HandleFunc("/weather", h.weather)
-
-	srv := &http.Server{
-		Addr:              "127.0.0.1:9000",
-		Handler:           r,
+func (s *server) ListenAndServe() error {
+	// Add a 'quiet' flag to disable logging?
+	// log.Println("Starting up on ", s.Addr)
+	s.httpServer = &http.Server{
+		Addr:              s.Addr,
 		IdleTimeout:       5 * time.Minute,
 		ReadHeaderTimeout: time.Minute,
 	}
-	fmt.Println("Starting up on :9000")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/weather", s.handleWeather)
+	s.httpServer.Handler = mux
 
-	// Run our server in a goroutine so that it doesn't block.
-	// https://github.com/gorilla/mux
-	go func() {
-		if err := srv.ListenAndServeTLS(os.Getenv("CERTPATH"), os.Getenv("KEYPATH")); err != nil {
-			log.Println(err)
-		}
-	}()
+	if err := s.httpServer.ListenAndServe(); err != nil {
+		log.Println("server start:", err)
+		return err
+	}
+	return nil
+}
 
-	//create channel for os.Signal comands
-	c := make(chan os.Signal, 1)
+func (s *server) Shutdown() {
+	// //create channel for os.Signal comands
+	// c := make(chan os.Signal, 1)
 
-	//accept CTRL+C for granceful shutdown, unblock condition
-	signal.Notify(c, os.Interrupt)
+	// //accept CTRL+C for granceful shutdown, unblock condition
+	// signal.Notify(c, os.Interrupt)
 
-	//everything below the <-c is the activity once channel unblocks
-	<-c
+	// //everything below the <-c is the activity once channel unblocks
+	// <-c
 
-	ctx, cancel := context.WithTimeout(context.Background(), wait)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	srv.Shutdown(ctx)
+	s.httpServer.Shutdown(ctx)
+}
 
-	log.Println("shutting down")
-	os.Exit(0)
+func GetWeatherFromOpenWeatherMap(city string) (Weather, error) {
+	// call OWM
+	return Weather{City: "Not implemented yet"}, nil
+}
 
+func NewServer(port int) server {
+	return server{
+		Addr:       fmt.Sprintf("127.0.0.1:%d", port),
+		GetWeather: GetWeatherFromOpenWeatherMap,
+	}
 }

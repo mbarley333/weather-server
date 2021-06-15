@@ -1,4 +1,4 @@
-module weather-server
+module weather
 
 go 1.16
 
