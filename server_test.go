@@ -12,9 +12,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// curl https://localhost:9000/weather?city=kaneohe
-// curl https://localhost:9000/weather -X POST -d '{"id":"id3","main":"Sunny","description":"Clear","temp":74.6,"city":"Kyoto"}'
-
+// GetKaneoheTestWeather returns Kaneohe specific weather results
+// and is used in the TestServerKaneohe func
 func GetKaneoheTestWeather(string) (weather.Weather, error) {
 	return weather.Weather{
 		Main:        "Cloudy",
@@ -24,6 +23,8 @@ func GetKaneoheTestWeather(string) (weather.Weather, error) {
 	}, nil
 }
 
+// GetSeattleTestWeather returns Seattle specific weather results
+// and is used in the TestServerSeattle func
 func GetSeattleTestWeather(string) (weather.Weather, error) {
 	return weather.Weather{
 		Main:        "Rain",
@@ -33,22 +34,31 @@ func GetSeattleTestWeather(string) (weather.Weather, error) {
 	}, nil
 }
 
+// GetNonexistentCityTestWeather returns an error as a result of an invalid city
 func GetNonexistentCityTestWeather(string) (weather.Weather, error) {
 	return weather.Weather{}, errors.New("no weather for you")
 }
 
+// TestServerKaneohe will create an HTTP server and a GET route
+// for Kaneohe
 func TestServerKaneohe(t *testing.T) {
 	t.Parallel()
+	// set server struct with basic values (port, GetWeather)
 	s := weather.NewServer(9000)
+
+	// override the GetWeatherFromOpenWeatherMap setting that prod would use
 	s.GetWeather = GetKaneoheTestWeather
+
+	//goroutine to start up HTTP server
 	go func() {
 		err := s.ListenAndServe()
 		if err != nil {
 			log.Fatal(err)
 		}
 	}()
+	//wait for server to start up.  refactor in ListenAndServer func
 	time.Sleep(50 * time.Millisecond)
-
+	// GET request against new HTTP server
 	resp, err := http.Get("http://127.0.0.1:9000/weather?city=kaneohe")
 	if err != nil {
 		t.Fatal(err)
@@ -126,4 +136,3 @@ func TestServerSeattle(t *testing.T) {
 		t.Errorf("want %q, got %q", want, string(got))
 	}
 }
-
