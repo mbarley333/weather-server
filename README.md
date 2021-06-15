@@ -1,6 +1,6 @@
 # Weather Server
 
-A Go based HTTP server that accepts GET and POST requests.  Returns weather data in JSON format.
+A Go based HTTP project that works with weather data
 
 
 ## Goals
