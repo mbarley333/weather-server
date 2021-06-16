@@ -51,6 +51,7 @@ func (s *server) handleWeather(w http.ResponseWriter, r *http.Request) {
 // since server has state (start, shutdown, etc) use a struct
 // to hold the object
 // server struct hold necesssary info to start up a weather HTTP server
+// GetWeather accepts a func with the following signature: string input and return Weather, error
 type server struct {
 	httpServer *http.Server
 	Addr       string
@@ -82,6 +83,8 @@ func (s *server) ListenAndServe() error {
 
 	waitForServerRoute(s.Addr + "/weather")
 
+	log.Println("zzz")
+
 	return nil
 }
 
@@ -104,17 +107,15 @@ func (s *server) Shutdown() {
 }
 
 // GetWeatherFromOpenWeatherMap will access to OWM api to pull in weather data
-func GetWeatherFromOpenWeatherMap(city string) (Weather, error) {
+func (c Config) GetWeatherFromOpenWeatherMap(city string) (Weather, error) {
 	// call OWM
-	city = "Kaneohe"
-	tempUnits := "imperial"
 
 	apiKey, err := api.GetWeatherAPIKey("WEATHERAPI")
 	if err != nil {
 		log.Fatal("Unable to get API key")
 	}
 
-	client, err := api.NewClient(apiKey, tempUnits)
+	client, err := api.NewClient(apiKey, c.TempUnits)
 	if err != nil {
 		log.Fatal("Something went wrong")
 	}
@@ -129,7 +130,7 @@ func GetWeatherFromOpenWeatherMap(city string) (Weather, error) {
 
 // NewServer creates HTTP and is useful to fulfill parallel testing
 // by passing in a different port # per test
-func (c *Config) NewServer() server {
+func (c Config) NewServer() server {
 
 	logger = log.New(os.Stdout, "", 0)
 
@@ -138,9 +139,11 @@ func (c *Config) NewServer() server {
 		logger.SetOutput(ioutil.Discard)
 	}
 
+	// new server with address:port
+	// and assigns the GetWeatherFromOpenWeatherMap method to the GetWeather field
 	return server{
 		Addr:       fmt.Sprintf("127.0.0.1:%d", c.Port),
-		GetWeather: GetWeatherFromOpenWeatherMap,
+		GetWeather: c.GetWeatherFromOpenWeatherMap,
 	}
 }
 

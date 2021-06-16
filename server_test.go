@@ -42,8 +42,11 @@ func GetNonexistentCityTestWeather(string) (weather.Weather, error) {
 // for Kaneohe
 func TestServerKaneohe(t *testing.T) {
 	t.Parallel()
-	// set server struct with basic values (port, GetWeather)
-	s := weather.NewServer(9000, "verbose")
+	// set server struct with basic values (port, logLevel, tempUnits)
+	config := new(weather.Config)
+	config.Port = 9000
+	config.LogLevel = "verbose"
+	s := config.NewServer()
 
 	// override the GetWeatherFromOpenWeatherMap setting that prod would use
 	s.GetWeather = GetKaneoheTestWeather
@@ -78,7 +81,10 @@ func TestServerKaneohe(t *testing.T) {
 
 func TestServerNonexistentCity(t *testing.T) {
 	t.Parallel()
-	s := weather.NewServer(9001, "verbose")
+	config := new(weather.Config)
+	config.Port = 9001
+	config.LogLevel = "verbose"
+	s := config.NewServer()
 	s.GetWeather = GetNonexistentCityTestWeather
 	go func() {
 		err := s.ListenAndServe()
@@ -108,7 +114,10 @@ func TestServerNonexistentCity(t *testing.T) {
 
 func TestServerSeattle(t *testing.T) {
 	t.Parallel()
-	s := weather.NewServer(9002, "verbose")
+	config := new(weather.Config)
+	config.Port = 9002
+	config.LogLevel = "verbose"
+	s := config.NewServer()
 	s.GetWeather = GetSeattleTestWeather
 	go func() {
 		err := s.ListenAndServe()
