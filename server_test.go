@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"testing"
-	"time"
 	"weather"
 
 	"github.com/google/go-cmp/cmp"
@@ -44,7 +43,7 @@ func GetNonexistentCityTestWeather(string) (weather.Weather, error) {
 func TestServerKaneohe(t *testing.T) {
 	t.Parallel()
 	// set server struct with basic values (port, GetWeather)
-	s := weather.NewServer(9000)
+	s := weather.NewServer(9000, "verbose")
 
 	// override the GetWeatherFromOpenWeatherMap setting that prod would use
 	s.GetWeather = GetKaneoheTestWeather
@@ -57,7 +56,7 @@ func TestServerKaneohe(t *testing.T) {
 		}
 	}()
 	//wait for server to start up.  refactor in ListenAndServer func
-	time.Sleep(50 * time.Millisecond)
+	//time.Sleep(50 * time.Millisecond)
 	// GET request against new HTTP server
 	resp, err := http.Get("http://127.0.0.1:9000/weather?city=kaneohe")
 	if err != nil {
@@ -79,7 +78,7 @@ func TestServerKaneohe(t *testing.T) {
 
 func TestServerNonexistentCity(t *testing.T) {
 	t.Parallel()
-	s := weather.NewServer(9001)
+	s := weather.NewServer(9001, "verbose")
 	s.GetWeather = GetNonexistentCityTestWeather
 	go func() {
 		err := s.ListenAndServe()
@@ -87,7 +86,7 @@ func TestServerNonexistentCity(t *testing.T) {
 			log.Fatal(err)
 		}
 	}()
-	time.Sleep(50 * time.Millisecond)
+	////time.Sleep(50 * time.Millisecond)
 
 	resp, err := http.Get("http://127.0.0.1:9001/weather?city=ZZZ")
 	if err != nil {
@@ -109,7 +108,7 @@ func TestServerNonexistentCity(t *testing.T) {
 
 func TestServerSeattle(t *testing.T) {
 	t.Parallel()
-	s := weather.NewServer(9002)
+	s := weather.NewServer(9002, "verbose")
 	s.GetWeather = GetSeattleTestWeather
 	go func() {
 		err := s.ListenAndServe()
@@ -117,7 +116,7 @@ func TestServerSeattle(t *testing.T) {
 			log.Fatal(err)
 		}
 	}()
-	time.Sleep(50 * time.Millisecond)
+	//time.Sleep(50 * time.Millisecond)
 
 	resp, err := http.Get("http://127.0.0.1:9002/weather?city=seattle")
 	if err != nil {

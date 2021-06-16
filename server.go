@@ -4,10 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"time"
+	"weather/api"
 )
+
+var logger *log.Logger
+
+type Config struct {
+	Port      int
+	LogLevel  string
+	TempUnits string
+}
 
 // struct for json
 type Weather struct {
@@ -47,9 +59,13 @@ type server struct {
 
 // ListenAndServe starts up the HTTP server with
 // specific paramters to override the default settings
+// also needed to allow for multiple instances of HTTP server
+// to run in parallel without port conflicts.  The Addr field
+// needs to be set with the unique port
 func (s *server) ListenAndServe() error {
 	// Add a 'quiet' flag to disable logging?
-	// log.Println("Starting up on ", s.Addr)
+
+	logger.Println("Starting up on ", s.Addr)
 	s.httpServer = &http.Server{
 		Addr:              s.Addr,
 		IdleTimeout:       5 * time.Minute,
@@ -64,7 +80,7 @@ func (s *server) ListenAndServe() error {
 		return err
 	}
 
-	//*** add func to check routes are active ***
+	waitForServerRoute(s.Addr + "/weather")
 
 	return nil
 }
@@ -90,14 +106,54 @@ func (s *server) Shutdown() {
 // GetWeatherFromOpenWeatherMap will access to OWM api to pull in weather data
 func GetWeatherFromOpenWeatherMap(city string) (Weather, error) {
 	// call OWM
-	return Weather{City: "Not implemented yet"}, nil
+	city = "Kaneohe"
+	tempUnits := "imperial"
+
+	apiKey, err := api.GetWeatherAPIKey("WEATHERAPI")
+	if err != nil {
+		log.Fatal("Unable to get API key")
+	}
+
+	client, err := api.NewClient(apiKey, tempUnits)
+	if err != nil {
+		log.Fatal("Something went wrong")
+	}
+
+	response, err := client.Get(city)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return Weather(response), nil
 }
 
 // NewServer creates HTTP and is useful to fulfill parallel testing
 // by passing in a different port # per test
-func NewServer(port int) server {
+func (c *Config) NewServer() server {
+
+	logger = log.New(os.Stdout, "", 0)
+
+	//overrride setting if quiet
+	if c.LogLevel == "quiet" {
+		logger.SetOutput(ioutil.Discard)
+	}
+
 	return server{
-		Addr:       fmt.Sprintf("127.0.0.1:%d", port),
+		Addr:       fmt.Sprintf("127.0.0.1:%d", c.Port),
 		GetWeather: GetWeatherFromOpenWeatherMap,
 	}
+}
+
+// waitForServerRoute checks if the main route is reachable
+func waitForServerRoute(url string) {
+	timeout := 50 * time.Millisecond
+	isRunning := false
+
+	for !isRunning {
+		_, err := net.DialTimeout("tcp", url, timeout)
+		if err == nil {
+			isRunning = true
+		}
+	}
+
 }
