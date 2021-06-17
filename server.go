@@ -175,19 +175,3 @@ func waitForServerRoute(url string) {
 	}
 
 }
-
-func (c Config) ServerStart() {
-
-}
-
-// try out concurrency by getting group of
-// cities
-
-// func GetHawaiiWeatherAsync(city string, wg *sync.WaitGroup) {
-// 	//map
-// 	defer wg.Done()
-
-// 	//wait group
-
-// 	//goroutine
-// }
