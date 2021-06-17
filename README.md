@@ -1,6 +1,6 @@
 # Weather Server
 
-A Go based HTTP project that works with weather data
+A Go based project that creates an HTTP Server, HTTP Client, and API to pull weather data from OWM.
 
 
 ## Goals
@@ -10,10 +10,11 @@ To learn and become more familiar with the following aspects of the Go language:
 * structs
 * maps
 * HTTP Server
-* context
-* channels
-* goroutines
+* HTTP Client
+* API
 * concurrency
-* writing clear code
+* context
+* goroutines
+* GUI
 
 
