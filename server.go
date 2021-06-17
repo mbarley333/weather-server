@@ -13,12 +13,16 @@ import (
 	"weather/api"
 )
 
-var logger *log.Logger
-
 type Config struct {
-	Port      int
-	LogLevel  string
-	TempUnits string
+	Port     int
+	LogLevel string
+}
+
+// struct for query string parameters to pass
+// to OWM api
+type UrlParameters struct {
+	City  string
+	Units string
 }
 
 // struct for json
@@ -30,11 +34,20 @@ type Weather struct {
 }
 
 func (s *server) handleWeather(w http.ResponseWriter, r *http.Request) {
-	city := r.URL.Query().Get("city")
+
+	params := UrlParameters{
+		City:  r.URL.Query().Get("city"),
+		Units: r.URL.Query().Get("units"),
+	}
+
+	if params.Units == "" {
+		params.Units = "imperial"
+	}
+
 	// get actual weather
-	conditions, err := s.GetWeather(city)
+	conditions, err := s.GetWeather(params)
 	if err != nil {
-		msg := fmt.Sprintf("unable to locate city %q", city)
+		msg := fmt.Sprintf("unable to locate city %q", params.City)
 		http.Error(w, msg, http.StatusNotFound)
 		return
 	}
@@ -55,7 +68,8 @@ func (s *server) handleWeather(w http.ResponseWriter, r *http.Request) {
 type server struct {
 	httpServer *http.Server
 	Addr       string
-	GetWeather func(string) (Weather, error)
+	GetWeather func(UrlParameters) (Weather, error)
+	Logger     *log.Logger
 }
 
 // ListenAndServe starts up the HTTP server with
@@ -64,14 +78,14 @@ type server struct {
 // to run in parallel without port conflicts.  The Addr field
 // needs to be set with the unique port
 func (s *server) ListenAndServe() error {
-	// Add a 'quiet' flag to disable logging?
 
-	logger.Println("Starting up on ", s.Addr)
 	s.httpServer = &http.Server{
 		Addr:              s.Addr,
 		IdleTimeout:       5 * time.Minute,
 		ReadHeaderTimeout: time.Minute,
+		ErrorLog:          s.Logger,
 	}
+	log.Println("Starting up on ", s.Addr)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/weather", s.handleWeather)
 	s.httpServer.Handler = mux
@@ -82,8 +96,6 @@ func (s *server) ListenAndServe() error {
 	}
 
 	waitForServerRoute(s.Addr + "/weather")
-
-	log.Println("zzz")
 
 	return nil
 }
@@ -107,7 +119,7 @@ func (s *server) Shutdown() {
 }
 
 // GetWeatherFromOpenWeatherMap will access to OWM api to pull in weather data
-func (c Config) GetWeatherFromOpenWeatherMap(city string) (Weather, error) {
+func GetWeatherFromOpenWeatherMap(params UrlParameters) (Weather, error) {
 	// call OWM
 
 	apiKey, err := api.GetWeatherAPIKey("WEATHERAPI")
@@ -115,12 +127,12 @@ func (c Config) GetWeatherFromOpenWeatherMap(city string) (Weather, error) {
 		log.Fatal("Unable to get API key")
 	}
 
-	client, err := api.NewClient(apiKey, c.TempUnits)
+	client, err := api.NewClient(apiKey, params.Units)
 	if err != nil {
 		log.Fatal("Something went wrong")
 	}
 
-	response, err := client.Get(city)
+	response, err := client.Get(params.City)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -132,7 +144,7 @@ func (c Config) GetWeatherFromOpenWeatherMap(city string) (Weather, error) {
 // by passing in a different port # per test
 func (c Config) NewServer() server {
 
-	logger = log.New(os.Stdout, "", 0)
+	logger := log.New(os.Stdout, "", 0)
 
 	//overrride setting if quiet
 	if c.LogLevel == "quiet" {
@@ -143,7 +155,8 @@ func (c Config) NewServer() server {
 	// and assigns the GetWeatherFromOpenWeatherMap method to the GetWeather field
 	return server{
 		Addr:       fmt.Sprintf("127.0.0.1:%d", c.Port),
-		GetWeather: c.GetWeatherFromOpenWeatherMap,
+		GetWeather: GetWeatherFromOpenWeatherMap,
+		Logger:     logger,
 	}
 }
 
@@ -160,3 +173,12 @@ func waitForServerRoute(url string) {
 	}
 
 }
+
+// func GetHawaiiWeatherAsync(city string, wg *sync.WaitGroup) {
+// 	//map
+// 	defer wg.Done()
+
+// 	//wait group
+
+// 	//goroutine
+// }
