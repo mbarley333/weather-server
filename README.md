@@ -13,6 +13,7 @@ To learn and become more familiar with the following aspects of the Go language:
 * HTTP Client
 * API
 * concurrency
+* channels
 * context
 * goroutines
 * GUI
