@@ -13,6 +13,7 @@ import (
 	"weather/api"
 )
 
+// struct to config new server
 type Config struct {
 	Port     int
 	LogLevel string
@@ -33,34 +34,6 @@ type Weather struct {
 	City        string  `json:"city"`
 }
 
-func (s *server) handleWeather(w http.ResponseWriter, r *http.Request) {
-
-	params := UrlParameters{
-		City:  r.URL.Query().Get("city"),
-		Units: r.URL.Query().Get("units"),
-	}
-
-	if params.Units == "" {
-		params.Units = "imperial"
-	}
-
-	// get actual weather
-	conditions, err := s.GetWeather(params)
-	if err != nil {
-		msg := fmt.Sprintf("unable to locate city %q", params.City)
-		http.Error(w, msg, http.StatusNotFound)
-		return
-	}
-	// marshal json for Write
-	jsonBytes, err := json.Marshal(conditions)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
-}
-
 // since server has state (start, shutdown, etc) use a struct
 // to hold the object
 // server struct hold necesssary info to start up a weather HTTP server
@@ -69,7 +42,25 @@ type server struct {
 	httpServer *http.Server
 	Addr       string
 	GetWeather func(UrlParameters) (Weather, error)
-	Logger     *log.Logger
+	logger     *log.Logger
+}
+
+// NewServer creates HTTP and is useful to fulfill parallel testing
+// by passing in a different port # per test
+func (c Config) NewServer() server {
+
+	newLogger := log.New(os.Stdout, "", log.LstdFlags)
+	if c.LogLevel == "quiet" {
+		newLogger.SetOutput(ioutil.Discard)
+	}
+
+	// new server with address:port
+	// and assigns the GetWeatherFromOpenWeatherMap method to the GetWeather field
+	return server{
+		Addr:       fmt.Sprintf("127.0.0.1:%d", c.Port),
+		GetWeather: GetWeatherFromOpenWeatherMap,
+		logger:     newLogger,
+	}
 }
 
 // ListenAndServe starts up the HTTP server with
@@ -83,15 +74,17 @@ func (s *server) ListenAndServe() error {
 		Addr:              s.Addr,
 		IdleTimeout:       5 * time.Minute,
 		ReadHeaderTimeout: time.Minute,
-		ErrorLog:          s.Logger,
+		ErrorLog:          s.logger,
 	}
-	log.Println("Starting up on ", s.Addr)
+	logger := s.logger
+
+	logger.Println("Starting up on ", s.Addr)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/weather", s.handleWeather)
 	s.httpServer.Handler = mux
 
 	if err := s.httpServer.ListenAndServe(); err != nil {
-		log.Println("server start:", err)
+		logger.Println("server start:", err)
 		return err
 	}
 
@@ -118,6 +111,35 @@ func (s *server) Shutdown() {
 	s.httpServer.Shutdown(ctx)
 }
 
+func (s *server) handleWeather(w http.ResponseWriter, r *http.Request) {
+
+	// url paramater logic -- possibly move to func
+	params := UrlParameters{
+		City:  r.URL.Query().Get("city"),
+		Units: r.URL.Query().Get("units"),
+	}
+
+	if params.Units == "" {
+		params.Units = "imperial"
+	}
+
+	// get actual weather
+	conditions, err := s.GetWeather(params)
+	if err != nil {
+		msg := fmt.Sprintf("unable to locate city %q", params.City)
+		http.Error(w, msg, http.StatusNotFound)
+		return
+	}
+	// marshal json for Write
+	jsonBytes, err := json.Marshal(conditions)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonBytes)
+}
+
 // GetWeatherFromOpenWeatherMap will access to OWM api to pull in weather data
 func GetWeatherFromOpenWeatherMap(params UrlParameters) (Weather, error) {
 	// call OWM
@@ -134,30 +156,10 @@ func GetWeatherFromOpenWeatherMap(params UrlParameters) (Weather, error) {
 
 	response, err := client.Get(params.City)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	return Weather(response), nil
-}
-
-// NewServer creates HTTP and is useful to fulfill parallel testing
-// by passing in a different port # per test
-func (c Config) NewServer() server {
-
-	logger := log.New(os.Stdout, "", 0)
-
-	//overrride setting if quiet
-	if c.LogLevel == "quiet" {
-		logger.SetOutput(ioutil.Discard)
-	}
-
-	// new server with address:port
-	// and assigns the GetWeatherFromOpenWeatherMap method to the GetWeather field
-	return server{
-		Addr:       fmt.Sprintf("127.0.0.1:%d", c.Port),
-		GetWeather: GetWeatherFromOpenWeatherMap,
-		Logger:     logger,
-	}
 }
 
 // waitForServerRoute checks if the main route is reachable
@@ -173,6 +175,13 @@ func waitForServerRoute(url string) {
 	}
 
 }
+
+func (c Config) ServerStart() {
+
+}
+
+// try out concurrency by getting group of
+// cities
 
 // func GetHawaiiWeatherAsync(city string, wg *sync.WaitGroup) {
 // 	//map

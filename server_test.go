@@ -13,7 +13,7 @@ import (
 
 // GetKaneoheTestWeather returns Kaneohe specific weather results
 // and is used in the TestServerKaneohe func
-func GetKaneoheTestWeather(string) (weather.Weather, error) {
+func GetKaneoheTestWeather(params weather.UrlParameters) (weather.Weather, error) {
 	return weather.Weather{
 		Main:        "Cloudy",
 		Description: "Partly cloudy",
@@ -24,7 +24,7 @@ func GetKaneoheTestWeather(string) (weather.Weather, error) {
 
 // GetSeattleTestWeather returns Seattle specific weather results
 // and is used in the TestServerSeattle func
-func GetSeattleTestWeather(string) (weather.Weather, error) {
+func GetSeattleTestWeather(params weather.UrlParameters) (weather.Weather, error) {
 	return weather.Weather{
 		Main:        "Rain",
 		Description: "Passing showers",
@@ -34,7 +34,7 @@ func GetSeattleTestWeather(string) (weather.Weather, error) {
 }
 
 // GetNonexistentCityTestWeather returns an error as a result of an invalid city
-func GetNonexistentCityTestWeather(string) (weather.Weather, error) {
+func GetNonexistentCityTestWeather(params weather.UrlParameters) (weather.Weather, error) {
 	return weather.Weather{}, errors.New("no weather for you")
 }
 
@@ -45,7 +45,7 @@ func TestServerKaneohe(t *testing.T) {
 	// set server struct with basic values (port, logLevel, tempUnits)
 	config := new(weather.Config)
 	config.Port = 9000
-	config.LogLevel = "verbose"
+	config.LogLevel = "quiet"
 	s := config.NewServer()
 
 	// override the GetWeatherFromOpenWeatherMap setting that prod would use
@@ -58,8 +58,7 @@ func TestServerKaneohe(t *testing.T) {
 			log.Fatal(err)
 		}
 	}()
-	//wait for server to start up.  refactor in ListenAndServer func
-	//time.Sleep(50 * time.Millisecond)
+
 	// GET request against new HTTP server
 	resp, err := http.Get("http://127.0.0.1:9000/weather?city=kaneohe")
 	if err != nil {
@@ -83,7 +82,7 @@ func TestServerNonexistentCity(t *testing.T) {
 	t.Parallel()
 	config := new(weather.Config)
 	config.Port = 9001
-	config.LogLevel = "verbose"
+	config.LogLevel = "quiet"
 	s := config.NewServer()
 	s.GetWeather = GetNonexistentCityTestWeather
 	go func() {
@@ -116,7 +115,7 @@ func TestServerSeattle(t *testing.T) {
 	t.Parallel()
 	config := new(weather.Config)
 	config.Port = 9002
-	config.LogLevel = "verbose"
+	config.LogLevel = "quiet"
 	s := config.NewServer()
 	s.GetWeather = GetSeattleTestWeather
 	go func() {

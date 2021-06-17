@@ -8,12 +8,12 @@ import (
 
 func main() {
 
-	//Config struct
+	// Config struct
 	config := new(weather.Config)
 
-	//assign cli flags to Config struct fields
+	// server startup configs
 	flag.IntVar(&config.Port, "port", 9010, "HTTP Server port")
-	flag.StringVar(&config.LogLevel, "log", "quiet", "log level: verbose or quiet")
+	flag.StringVar(&config.LogLevel, "log", "verbose", "log level: verbose or quiet")
 
 	flag.Parse()
 
