@@ -14,8 +14,8 @@ A Go based learning project that creates an HTTP server and queryable api endpoi
 * Clone weather repo to local machine and change to that directory
 * Build weather client: go build -o weather-server ./cmd/main.go
 * ./weather-server -port 9011 -loglevel verbose
-  *port flag can accept any port # that doesn't conflict
-  *loglevel flag can accept verbose or quiet
+* port flag can accept any port # that doesn't conflict
+* loglevel flag can accept verbose or quiet
 * Starts up HTTP server on http://127.0.0.1:9011
 
 ```bash
