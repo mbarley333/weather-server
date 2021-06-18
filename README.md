@@ -16,7 +16,7 @@ A Go based learning project that creates an HTTP server and queryable api endpoi
 * ./weather-server -port 9011 -loglevel verbose
 * port flag can accept any port # that doesn't conflict
 * loglevel flag can accept verbose or quiet
-* Starts up HTTP server on http://127.0.0.1:9011
+* Starts up an HTTP server on http://127.0.0.1:9011
 
 ```bash
 curl http://127.0.0.1:9011/weather?city=seattle
