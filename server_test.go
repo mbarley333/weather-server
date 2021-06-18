@@ -143,3 +143,7 @@ func TestServerSeattle(t *testing.T) {
 		t.Errorf("want %q, got %q", want, string(got))
 	}
 }
+
+func TestGetHawaiiCities(t *testing.T) {
+	weather.GetHawaiiCitiesConcurrent()
+}

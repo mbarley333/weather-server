@@ -76,15 +76,14 @@ func (s *server) ListenAndServe() error {
 		ReadHeaderTimeout: time.Minute,
 		ErrorLog:          s.logger,
 	}
-	logger := s.logger
 
-	logger.Println("Starting up on ", s.Addr)
+	s.logger.Println("Starting up on ", s.Addr)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/weather", s.handleWeather)
 	s.httpServer.Handler = mux
 
 	if err := s.httpServer.ListenAndServe(); err != nil {
-		logger.Println("server start:", err)
+		s.logger.Println("server start:", err)
 		return err
 	}
 
@@ -175,3 +174,26 @@ func waitForServerRoute(url string) {
 	}
 
 }
+
+// func GetHawaiiCitiesConcurrent() {
+// 	var cities []string
+
+// 	cities = append(cities, "Hilo")
+// 	cities = append(cities, "Kaneohe")
+// 	cities = append(cities, "Lihue")
+// 	cities = append(cities, "Papaikou")
+// 	cities = append(cities, "Manoa")
+
+// 	for _, city := range cities {
+
+// 		p := UrlParameters{
+// 			City: string(city),
+// 		}
+// 		go func() {
+
+// 			resp, _ := GetWeatherFromOpenWeatherMap(p)
+// 			fmt.Println(resp)
+
+// 		}()
+// 	}
+// }
