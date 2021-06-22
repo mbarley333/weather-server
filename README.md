@@ -3,7 +3,7 @@
 A Go based learning project that creates an HTTP server and queryable api endpoint.
 
 ```bash
-./weather-server -port 9011 -loglevel verbose
+./weather-server -port 9011 -log verbose
 {Clouds few clouds 81.86 Seattle}
 ```
 
@@ -13,9 +13,9 @@ A Go based learning project that creates an HTTP server and queryable api endpoi
 * Create an environment variable for your Open Weather Map API key: `export WEATHERAPI=YourOpenWeatherMapAPIKey`
 * Clone weather repo to local machine and change to that directory
 * Build weather client: go build -o weather-server ./cmd/main.go
-* ./weather-server -port 9011 -loglevel verbose
+* ./weather-server -port 9011 -log verbose
 * port flag can accept any port # that doesn't conflict
-* loglevel flag can accept verbose or quiet
+* log flag can accept verbose or quiet
 * Starts up an HTTP server on http://127.0.0.1:9011
 
 ```bash
