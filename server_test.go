@@ -59,6 +59,8 @@ func TestServerKaneohe(t *testing.T) {
 		}
 	}()
 
+	weather.WaitForServerRoute(s.Addr + "/weather")
+
 	// GET request against new HTTP server
 	resp, err := http.Get("http://127.0.0.1:9000/weather?city=kaneohe")
 	if err != nil {
@@ -91,7 +93,8 @@ func TestServerNonexistentCity(t *testing.T) {
 			log.Fatal(err)
 		}
 	}()
-	////time.Sleep(50 * time.Millisecond)
+
+	weather.WaitForServerRoute(s.Addr + "/weather")
 
 	resp, err := http.Get("http://127.0.0.1:9001/weather?city=ZZZ")
 	if err != nil {
@@ -124,7 +127,7 @@ func TestServerSeattle(t *testing.T) {
 			log.Fatal(err)
 		}
 	}()
-	//time.Sleep(50 * time.Millisecond)
+	weather.WaitForServerRoute(s.Addr + "/weather")
 
 	resp, err := http.Get("http://127.0.0.1:9002/weather?city=seattle")
 	if err != nil {
@@ -142,8 +145,4 @@ func TestServerSeattle(t *testing.T) {
 	if !cmp.Equal(want, string(got)) {
 		t.Errorf("want %q, got %q", want, string(got))
 	}
-}
-
-func TestGetHawaiiCities(t *testing.T) {
-	weather.GetHawaiiCitiesConcurrent()
 }

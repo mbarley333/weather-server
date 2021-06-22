@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
+	"os/signal"
 	"weather"
 )
 
@@ -18,9 +20,25 @@ func main() {
 	flag.Parse()
 
 	s := config.NewServer()
-	err := s.ListenAndServe()
-	if err != nil {
-		log.Fatal(err)
-	}
 
+	go func() {
+		err := s.ListenAndServe()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// loop until main route responds
+	weather.WaitForServerRoute(s.Addr + "/weather")
+
+	// create channel to wait for CTRL + C
+	// and prevent main from exiting
+	c := make(chan os.Signal, 1)
+	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
+	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
+	signal.Notify(c, os.Interrupt)
+
+	// Block until we receive our signal.
+	<-c
+	s.Shutdown()
 }

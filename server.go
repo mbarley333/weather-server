@@ -87,27 +87,19 @@ func (s *server) ListenAndServe() error {
 		return err
 	}
 
-	waitForServerRoute(s.Addr + "/weather")
-
 	return nil
 }
 
 // Shutdown is a method on the server struct
 // and performs HTTP server shutdown
 func (s *server) Shutdown() {
-	// //create channel for os.Signal comands
-	// c := make(chan os.Signal, 1)
 
-	// //accept CTRL+C for granceful shutdown, unblock condition
-	// signal.Notify(c, os.Interrupt)
-
-	// //everything below the <-c is the activity once channel unblocks
-	// <-c
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-
+	s.logger.Println("shutting down..")
 	s.httpServer.Shutdown(ctx)
+	os.Exit(0)
+
 }
 
 func (s *server) handleWeather(w http.ResponseWriter, r *http.Request) {
@@ -162,38 +154,16 @@ func GetWeatherFromOpenWeatherMap(params UrlParameters) (Weather, error) {
 }
 
 // waitForServerRoute checks if the main route is reachable
-func waitForServerRoute(url string) {
-	timeout := 50 * time.Millisecond
-	isRunning := false
+func WaitForServerRoute(url string) {
 
-	for !isRunning {
-		_, err := net.DialTimeout("tcp", url, timeout)
+	for {
+		_, err := net.Dial("tcp", url)
 		if err == nil {
-			isRunning = true
+			log.Println("tcp not listening")
+			time.Sleep(100 * time.Millisecond)
+			continue
 		}
+		break
 	}
 
 }
-
-// func GetHawaiiCitiesConcurrent() {
-// 	var cities []string
-
-// 	cities = append(cities, "Hilo")
-// 	cities = append(cities, "Kaneohe")
-// 	cities = append(cities, "Lihue")
-// 	cities = append(cities, "Papaikou")
-// 	cities = append(cities, "Manoa")
-
-// 	for _, city := range cities {
-
-// 		p := UrlParameters{
-// 			City: string(city),
-// 		}
-// 		go func() {
-
-// 			resp, _ := GetWeatherFromOpenWeatherMap(p)
-// 			fmt.Println(resp)
-
-// 		}()
-// 	}
-// }
