@@ -9,6 +9,18 @@ import (
 	"time"
 )
 
+const (
+	UnitsMetric   = "metric"
+	UnitsImperial = "imperial"
+	UnitsStandard = "standard"
+)
+
+var units = map[string]bool{
+	UnitsImperial: true,
+	UnitsMetric:   true,
+	UnitsStandard: true,
+}
+
 // WeatherReponse is used to accept JSON structured
 // data.  Output is not very human friendly and is thus
 // a stage type for the Weather struct
@@ -37,7 +49,7 @@ type Weather struct {
 type Client struct {
 	Base       string
 	Units      string
-	ApiKey     string
+	APIKey     string
 	HTTPClient *http.Client
 }
 
@@ -51,7 +63,7 @@ func (c Client) Get(location string) (Weather, error) {
 	resp, err := c.HTTPClient.Get(url)
 
 	if err != nil {
-		return Weather{}, fmt.Errorf("something went wrong.  Please try again later.  %v", err)
+		return Weather{}, fmt.Errorf("error contacting api: %v", err)
 	}
 	//close when done to prevent resource leaks
 	defer resp.Body.Close()
@@ -71,16 +83,19 @@ func (c Client) Get(location string) (Weather, error) {
 // Returns Client struct and error
 func NewClient(apiKey string, tempunits string) (Client, error) {
 
-	var c Client
+	//var c Client
 
-	if tempunits == "metric" || tempunits == "imperial" || tempunits == "standard" {
-		c.Units = tempunits
+	result := validUnit(tempunits)
+	if !result {
+		return Client{}, fmt.Errorf("invalid unit of measurement: %s", tempunits)
 	}
 
-	c.Base = "https://api.openweathermap.org"
-	c.ApiKey = apiKey
-	//override default HTTPClient timeout settings
-	c.HTTPClient = &http.Client{Timeout: 10 * time.Second}
+	c := Client{
+		Units:      tempunits,
+		Base:       "https://api.openweathermap.org",
+		APIKey:     apiKey,
+		HTTPClient: &http.Client{Timeout: 10 * time.Second},
+	}
 
 	return c, nil
 
@@ -92,7 +107,7 @@ func GetWeatherAPIKey(env string) (string, error) {
 
 	apikey := os.Getenv(env)
 
-	if len(apikey) < 1 {
+	if apikey == "" {
 		return "", fmt.Errorf("%s value not set", env)
 	}
 	return apikey, nil
@@ -119,11 +134,16 @@ func ParseResponse(r io.Reader) (Weather, error) {
 		return Weather{}, err
 	}
 
-	var w Weather
+	w := Weather{
+		Main:        result.Weather[0].Main,
+		Description: result.Weather[0].Description,
+		Temp:        result.Main.Temp,
+		City:        result.City,
+	}
 
-	w.Main = result.Weather[0].Main
-	w.Description = result.Weather[0].Description
-	w.Temp = result.Main.Temp
-	w.City = result.City
 	return w, nil
+}
+
+func validUnit(unit string) bool {
+	return units[unit]
 }
