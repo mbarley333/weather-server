@@ -59,14 +59,14 @@ func TestWeatherGet(t *testing.T) {
 
 }
 
-func TestGetWeatherAPIKey(t *testing.T) {
-	t.Parallel()
-	_, err := api.GetWeatherAPIKey("WEATHERAPI")
-	if err != nil {
-		t.Fatal(err)
-	}
+// func TestGetWeatherAPIKey(t *testing.T) {
+// 	t.Parallel()
+// 	_, err := api.GetWeatherAPIKey("WEATHERAPI")
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-}
+// }
 
 func TestNewClient(t *testing.T) {
 	t.Parallel()
