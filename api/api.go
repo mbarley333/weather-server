@@ -37,7 +37,7 @@ type Weather struct {
 type Client struct {
 	Base       string
 	Units      string
-	ApiKey     string
+	APIKey     string
 	HTTPClient *http.Client
 }
 
