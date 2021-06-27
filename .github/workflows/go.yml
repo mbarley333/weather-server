@@ -1,0 +1,43 @@
+name: CICD
+
+on:
+  push:
+    branches: 
+      - test
+      - main
+  pull_request:
+    branches:
+      - test
+      - main
+
+jobs:
+
+  build:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        target: aarch64-apple-darwin
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16
+        
+    - name: Install dependencies
+      run: |
+        go version
+        go get -u golang.org/x/lint/golint
+        
+    - name: Build
+      run: go build .
+      
+    - name: Run vet & lint
+      run: |
+          go vet .
+          golint .
+
+    - name: Run server testing
+      run: go test -v
+    - name: Run api testing
+      run: cd api && go test -v
