@@ -82,7 +82,7 @@ func TestNewClient(t *testing.T) {
 	//want api key and temp units
 	want := api.Client{
 		Base:       "https://api.openweathermap.org",
-		ApiKey:     apiKey,
+		APIKey:     apiKey,
 		Units:      tempUnits,
 		HTTPClient: &http.Client{Timeout: 10 * time.Second},
 	}
