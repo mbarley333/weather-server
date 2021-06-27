@@ -78,7 +78,7 @@ func NewClient(apiKey string, tempunits string) (Client, error) {
 	}
 
 	c.Base = "https://api.openweathermap.org"
-	c.ApiKey = apiKey
+	c.APIKey = apiKey
 	//override default HTTPClient timeout settings
 	c.HTTPClient = &http.Client{Timeout: 10 * time.Second}
 
@@ -102,7 +102,7 @@ func GetWeatherAPIKey(env string) (string, error) {
 // assembles the URL used in the request
 func (c Client) FormatURL(location string) string {
 
-	return fmt.Sprintf("%s/data/2.5/weather?q=%s&units=%s&appid=%s", c.Base, location, c.Units, c.ApiKey)
+	return fmt.Sprintf("%s/data/2.5/weather?q=%s&units=%s&appid=%s", c.Base, location, c.Units, c.APIKey)
 
 }
 
