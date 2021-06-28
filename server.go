@@ -9,15 +9,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
-	"weather/api"
 )
-
-// struct to config new server
-type Config struct {
-	Port     int
-	LogLevel string
-}
 
 // struct for query string parameters to pass
 // to OWM api
@@ -32,35 +27,68 @@ type Weather struct {
 	Description string  `json:"description"`
 	Temp        float64 `json:"temp"`
 	City        string  `json:"city"`
+	Units       string  `json:"units"`
 }
 
 // since server has state (start, shutdown, etc) use a struct
 // to hold the object
 // server struct hold necesssary info to start up a weather HTTP server
 // GetWeather accepts a func with the following signature: string input and return Weather, error
-type server struct {
+type Server struct {
 	httpServer *http.Server
 	Addr       string
 	GetWeather func(UrlParameters) (Weather, error)
 	logger     *log.Logger
+	Port       int
+	LogLevel   string
+}
+
+// type to hold options for Server struct
+type Option func(*Server)
+
+// override default port for Server
+// provides cleaner user experience
+func WithPort(port int) Option {
+	return func(s *Server) {
+		s.Port = port
+	}
+}
+
+func WithLogLevel(loglevel string) Option {
+	return func(s *Server) {
+		s.LogLevel = loglevel
+	}
 }
 
 // NewServer creates HTTP and is useful to fulfill parallel testing
-// by passing in a different port # per test
-func (c Config) NewServer() server {
+// by passing in a different port # per test.  Takes in a variadic
+// parameter, opts, to use a Server options
+func NewServer(opts ...Option) *Server {
+
+	// create Server instance with defaults
+	s := &Server{
+		Port:     9090,
+		LogLevel: "verbose",
+	}
+
+	// set override options.  loop takes in
+	// With funcs loaded with input params and
+	// executes to update Server struct
+	for _, o := range opts {
+		o(s)
+	}
 
 	newLogger := log.New(os.Stdout, "", log.LstdFlags)
-	if c.LogLevel == "quiet" {
+	if s.LogLevel == "quiet" {
 		newLogger.SetOutput(ioutil.Discard)
 	}
 
-	// new server with address:port
-	// and assigns the GetWeatherFromOpenWeatherMap method to the GetWeather field
-	return server{
-		Addr:       fmt.Sprintf("127.0.0.1:%d", c.Port),
-		GetWeather: GetWeatherFromOpenWeatherMap,
-		logger:     newLogger,
-	}
+	// update struct...perhaps there is a better way.
+	s.Addr = fmt.Sprintf("127.0.0.1:%d", s.Port)
+	s.GetWeather = GetWeatherFromOpenWeatherMap
+	s.logger = newLogger
+
+	return s
 }
 
 // ListenAndServe starts up the HTTP server with
@@ -68,7 +96,7 @@ func (c Config) NewServer() server {
 // also needed to allow for multiple instances of HTTP server
 // to run in parallel without port conflicts.  The Addr field
 // needs to be set with the unique port
-func (s *server) ListenAndServe() error {
+func (s *Server) ListenAndServe() error {
 
 	s.httpServer = &http.Server{
 		Addr:              s.Addr,
@@ -83,16 +111,26 @@ func (s *server) ListenAndServe() error {
 	s.httpServer.Handler = mux
 
 	if err := s.httpServer.ListenAndServe(); err != nil {
+		WaitForServerRoute(s.Addr + "/weather")
 		s.logger.Println("server start:", err)
 		return err
 	}
+
+	c := make(chan os.Signal, 1)
+	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
+	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
+	signal.Notify(c, syscall.SIGTERM)
+
+	// Block until we receive our signal.
+	<-c
+	s.Shutdown()
 
 	return nil
 }
 
 // Shutdown is a method on the server struct
 // and performs HTTP server shutdown
-func (s *server) Shutdown() {
+func (s *Server) Shutdown() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -102,7 +140,7 @@ func (s *server) Shutdown() {
 
 }
 
-func (s *server) handleWeather(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleWeather(w http.ResponseWriter, r *http.Request) {
 
 	// url paramater logic -- possibly move to func
 	params := UrlParameters{
@@ -135,20 +173,23 @@ func (s *server) handleWeather(w http.ResponseWriter, r *http.Request) {
 func GetWeatherFromOpenWeatherMap(params UrlParameters) (Weather, error) {
 	// call OWM
 
-	apiKey, err := api.GetWeatherAPIKey("WEATHERAPI")
+	apiKey, err := GetWeatherAPIKey("WEATHERAPI")
 	if err != nil {
 		log.Fatal("Unable to get API key")
 	}
 
-	client, err := api.NewClient(apiKey, params.Units)
+	client, err := NewClient(apiKey, params.Units)
 	if err != nil {
-		log.Fatal("Something went wrong")
+		log.Fatalf("unable to create new client: %s", err)
 	}
 
 	response, err := client.Get(params.City)
 	if err != nil {
 		log.Println(err)
 	}
+
+	// add units to Weather struct
+	response.Units = params.Units
 
 	return Weather(response), nil
 }
