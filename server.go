@@ -89,6 +89,7 @@ func NewServer(opts ...Option) *Server {
 	s.logger = newLogger
 
 	return s
+
 }
 
 // ListenAndServe starts up the HTTP server with
@@ -185,7 +186,7 @@ func GetWeatherFromOpenWeatherMap(params UrlParameters) (Weather, error) {
 
 	response, err := client.Get(params.City)
 	if err != nil {
-		log.Println(err)
+		log.Printf("invalid city requested: %s", params.City)
 	}
 
 	// add units to Weather struct
