@@ -1,0 +1,21 @@
+# Binaries, plugins, libs
+*.dll
+*.dylib
+*.exe
+*.exe~
+*.so
+bin
+
+# Testing
+*.test
+*.tmp
+
+# certs
+*.pem
+
+
+#text
+*.txt
+
+#vscode
+.vscode/
