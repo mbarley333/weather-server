@@ -19,6 +19,7 @@ func GetKaneoheTestWeather(params weather.UrlParameters) (weather.Weather, error
 		Description: "Partly cloudy",
 		Temp:        74.6,
 		City:        "Kaneohe",
+		Units:       "imperial",
 	}, nil
 }
 
@@ -30,6 +31,7 @@ func GetSeattleTestWeather(params weather.UrlParameters) (weather.Weather, error
 		Description: "Passing showers",
 		Temp:        64.6,
 		City:        "Seattle",
+		Units:       "imperial",
 	}, nil
 }
 
@@ -42,11 +44,10 @@ func GetNonexistentCityTestWeather(params weather.UrlParameters) (weather.Weathe
 // for Kaneohe
 func TestServerKaneohe(t *testing.T) {
 	t.Parallel()
-	// set server struct with basic values (port, logLevel, tempUnits)
-	config := new(weather.Config)
-	config.Port = 9000
-	config.LogLevel = "quiet"
-	s := config.NewServer()
+	s := weather.NewServer(
+		weather.WithPort(9000),
+		weather.WithLogLevel("quiet"),
+	)
 
 	// override the GetWeatherFromOpenWeatherMap setting that prod would use
 	s.GetWeather = GetKaneoheTestWeather
@@ -59,8 +60,6 @@ func TestServerKaneohe(t *testing.T) {
 		}
 	}()
 
-	weather.WaitForServerRoute(s.Addr + "/weather")
-
 	// GET request against new HTTP server
 	resp, err := http.Get("http://127.0.0.1:9000/weather?city=kaneohe")
 	if err != nil {
@@ -70,7 +69,7 @@ func TestServerKaneohe(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("unexpected status %d", resp.StatusCode)
 	}
-	want := `{"main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe"}`
+	want := `{"main":"Cloudy","description":"Partly cloudy","temp":74.6,"city":"Kaneohe","units":"imperial"}`
 	got, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
@@ -82,10 +81,12 @@ func TestServerKaneohe(t *testing.T) {
 
 func TestServerNonexistentCity(t *testing.T) {
 	t.Parallel()
-	config := new(weather.Config)
-	config.Port = 9001
-	config.LogLevel = "quiet"
-	s := config.NewServer()
+
+	s := weather.NewServer(
+		weather.WithPort(9001),
+		weather.WithLogLevel("quiet"),
+	)
+
 	s.GetWeather = GetNonexistentCityTestWeather
 	go func() {
 		err := s.ListenAndServe()
@@ -93,8 +94,6 @@ func TestServerNonexistentCity(t *testing.T) {
 			log.Fatal(err)
 		}
 	}()
-
-	weather.WaitForServerRoute(s.Addr + "/weather")
 
 	resp, err := http.Get("http://127.0.0.1:9001/weather?city=ZZZ")
 	if err != nil {
@@ -116,10 +115,11 @@ func TestServerNonexistentCity(t *testing.T) {
 
 func TestServerSeattle(t *testing.T) {
 	t.Parallel()
-	config := new(weather.Config)
-	config.Port = 9002
-	config.LogLevel = "quiet"
-	s := config.NewServer()
+	s := weather.NewServer(
+		weather.WithPort(9002),
+		weather.WithLogLevel("quiet"),
+	)
+
 	s.GetWeather = GetSeattleTestWeather
 	go func() {
 		err := s.ListenAndServe()
@@ -127,7 +127,6 @@ func TestServerSeattle(t *testing.T) {
 			log.Fatal(err)
 		}
 	}()
-	weather.WaitForServerRoute(s.Addr + "/weather")
 
 	resp, err := http.Get("http://127.0.0.1:9002/weather?city=seattle")
 	if err != nil {
@@ -137,7 +136,7 @@ func TestServerSeattle(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("unexpected status %d", resp.StatusCode)
 	}
-	want := `{"main":"Rain","description":"Passing showers","temp":64.6,"city":"Seattle"}`
+	want := `{"main":"Rain","description":"Passing showers","temp":64.6,"city":"Seattle","units":"imperial"}`
 	got, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
