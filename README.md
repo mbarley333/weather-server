@@ -33,11 +33,5 @@ To learn and become more familiar with the following aspects of the Go language:
 * maps
 * HTTP Server
 * HTTP Client
-* API
-* concurrency
-* channels
-* context
-* goroutines
-* GUI
 
 
